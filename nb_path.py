@@ -39,13 +39,9 @@ class NetBrainInventory(object):
     def get_inventory(self):
 
         if not self.api_url:
-            sys.exit("Please check API URL in script configuration file.")
+            sys.exit("Please provide a url")
         api_output = requests.get(self.api_url)
-
-        # Check that a request is 200 and not something else like 404, 401, 500 ... etc.
         api_output.raise_for_status()
-
-        # Get api output data.
         api_output_data = api_output.json()
 
         return api_output_data
