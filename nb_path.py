@@ -1,34 +1,46 @@
-import os
-import sys
+#!/usr/bin/env python
+
+import argparse
 import requests
-
-
-# try:
-#     import requests
-# except ImportError:
-#     sys.exit('requests package is required for this inventory script.')
+import sys
 
 try:
     import json
 except ImportError:
     import simplejson as json
 
-class NetbBainsInventory(object):
+
+class NetBrainInventory(object):
     """NetBrain as a dynamic inventory for Ansible.
     Retrieves hosts list from netbrain API and returns Ansible dynamic inventory (JSON).
     """
 
-    def __init__(self):
-        self.api_url = ""
+    def __init__(self, url):
+        self.api_url = url
+        self.inventory = {}
+        self.read_cli_args()
 
-    @staticmethod
-    def get_hosts_list(api_url):
+        # Called with `--list`.
+        if self.args.list:
+            self.inventory = self.get_inventory()
+        # Called with `--host [hostname]`.
+        elif self.args.host:
+            # Not implemented, since we return _meta info `--list`.
+            self.inventory = self.empty_inventory()
+        # If no groups or vars are present, return an empty inventory.
+        else:
+            self.inventory = self.empty_inventory()
 
-        if not api_url:
+        print(json.dumps(self.inventory))
+
+    def empty_inventory(self):
+        return {'_meta': {'hostvars': {}}}
+
+    def get_inventory(self):
+
+        if not self.api_url:
             sys.exit("Please check API URL in script configuration file.")
-
-        hosts_list = []
-        api_output = requests.get(api_url)
+        api_output = requests.get(self.api_url)
 
         # Check that a request is 200 and not something else like 404, 401, 500 ... etc.
         api_output.raise_for_status()
@@ -36,18 +48,13 @@ class NetbBainsInventory(object):
         # Get api output data.
         api_output_data = api_output.json()
 
-        if isinstance(api_output_data, dict) and "results" in api_output_data:
-            hosts_list += api_output_data["results"]
+        return api_output_data
 
-        # Get hosts list.
-        return hosts_list
-
-
-def main():
-    nb = NetbBainsInventory("")
-    ansible_inventory = nb.generate_inventory()
-    print(json.dumps(ansible_inventory))
+    def read_cli_args(self):
+        parser = argparse.ArgumentParser()
+        parser.add_argument('--list', action='store_true')
+        parser.add_argument('--host', action='store')
+        self.args = parser.parse_args()
 
 
-if __name__ == "__main__":
-    main()
+NetBrainInventory("https://raw.githubusercontent.com/yushihui/ansible_inventory/master/sample.json")
